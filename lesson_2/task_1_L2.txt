@@ -1,0 +1,28 @@
+Решение по второй задаче.
+Все команды, которые я выплнял.
+
+1. Создал файл .my.cng с кодом
+[mysql]
+user=root
+password= *****
+
+где ***** - мой пароль.
+
+2. Команды, которые я использовал:
+CREATE DATABASE example;
+USE example;
+CREATE TABLES users (id INT, name TEXT);
+
+3. Команды, которые я использовал:
+mysqldump example > example.sql
+CREATE DATABASE sample
+mysql sample < example.sql
+
+4. Команды, которые я использовал:
+mysqldump --where="true limit 100" mysql help_keyword > test.sql
+mysql testik1 < test.sql
+
+при импорте выдаёт ошибку, что таблица зарезервирована Mysql
+ERROR 3723 (HY000) at line 25: The table 'help_keyword' may not be created in the reserved tablespace 'mysql'.
+
+.
