@@ -1,0 +1,165 @@
+-- Задание 1 Создать и заполнить таблицы лайков и постов.
+-- Данные таблицы posts заполнялись с помощью фейкера
+
+DROP TABLE IF EXISTS likes;
+CREATE TABLE likes (
+	id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	user_id INT UNSIGNED NOT NULL,
+	target_id INT UNSIGNED NOT NULL,
+	target_type_id INT UNSIGNED NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+SHOW tables;
+
+DROP TABLE IF EXISTS target_types;
+CREATE TABLE target_types (
+	id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	name VARCHAR(255) NOT NULL UNIQUE,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO target_types (name) VALUES
+	('messages'),
+	('users'),
+	('media'),
+	('posts');
+
+INSERT INTO likes 
+  SELECT 
+    id, 
+    FLOOR(1 + (RAND() * 100)), 
+    FLOOR(1 + (RAND() * 100)),
+    FLOOR(1 + (RAND() * 4)),
+    CURRENT_TIMESTAMP 
+  FROM messages;
+ 
+
+DROP TABLE IF EXISTS posts;
+CREATE TABLE posts (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  community_id INT UNSIGNED,
+  head VARCHAR(255),
+  body TEXT NOT NULL,
+  media_id INT UNSIGNED,
+  is_public BOOLEAN DEFAULT TRUE,
+  is_archived BOOLEAN DEFAULT FALSE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Задание 2. Создать все необходимые внешние ключи и диаграмму отношений.
+
+DESC profiles;
+SELECT * FROM users;
+
+DESC users;
+ALTER TABLE profiles MODIFY user_id int UNSIGNED;
+
+ALTER TABLE profiles 
+  ADD CONSTRAINT profiles_user_id_fk
+   FOREIGN KEY (user_id) REFERENCES users(id)
+	  ON DELETE CASCADE;
+	  
+DESC messages;
+ALTER TABLE messages 
+  ADD CONSTRAINT messages_from_user_id_fk
+   FOREIGN KEY (from_user_id) REFERENCES users(id),
+  ADD CONSTRAINT messages_to_user_id_fk
+   FOREIGN KEY (to_user_id) REFERENCES users(id)
+	  ON DELETE CASCADE; 
+
+DESC communities_users;
+ALTER TABLE communities_users 
+  ADD CONSTRAINT communities_users_community_id_fk
+    FOREIGN KEY (community_id) REFERENCES communities(id),
+  ADD CONSTRAINT communities_user_id_fk
+    FOREIGN KEY (user_id) REFERENCES users(id)  
+      ON DELETE CASCADE;
+      
+DESC friendship;
+ALTER TABLE friendship
+  ADD CONSTRAINT friendship_user_id_fk
+    FOREIGN KEY (user_id) REFERENCES users(id),
+  ADD CONSTRAINT friendship_friend_id_fk
+    FOREIGN KEY (friend_id) REFERENCES users(id),
+  ADD CONSTRAINT friendship_friendship_status_id_fk
+    FOREIGN KEY (friendship_status_id) REFERENCES friendship_statuses(id)  
+      ON DELETE CASCADE;
+
+DESC likes;
+ALTER TABLE likes
+  ADD CONSTRAINT likes_user_id_fk
+    FOREIGN KEY (user_id) REFERENCES users(id),
+  ADD CONSTRAINT likes_target_type_id_fk
+    FOREIGN KEY (target_type_id) REFERENCES target_types(id)
+      ON DELETE CASCADE;
+
+DESC media;
+ALTER TABLE media
+  ADD CONSTRAINT media_user_id_fk
+    FOREIGN KEY (user_id) REFERENCES users(id),
+  ADD CONSTRAINT media_media_type_id_fk
+    FOREIGN KEY (media_type_id) REFERENCES media_types(id)
+      ON DELETE CASCADE;
+
+
+DESC posts;
+ALTER TABLE posts
+ADD CONSTRAINT posts_media_id_fk
+    FOREIGN KEY (media_id) REFERENCES media(id),
+ADD CONSTRAINT posts_user_id_fk
+    FOREIGN KEY (user_id) REFERENCES users(id),
+ADD CONSTRAINT posts_community_id_fk
+    FOREIGN KEY (community_id) REFERENCES communities(id)
+      ON DELETE CASCADE;
+
+-- 3 Определить кто больше поставил лайков (всего) - мужчины или женщины?
+
+SELECT COUNT(*) user_id, gender FROM likes, profiles
+WHERE likes.user_id = profiles.user_id
+GROUP BY gender;
+
+-- 4 Подсчитать общее количество лайков десяти самым молодым пользователям 
+-- (сколько лайков получили 10 самых молодых пользователей).
+
+SELECT SUM(likes) 
+FROM (SELECT COUNT(*) likes
+	  FROM likes, profiles
+	  WHERE target_id = profiles.user_id
+	  GROUP BY target_id
+	  ORDER BY profiles.birthday DESC
+	  LIMIT 10) as total;
+	  
+-- 5 Найти 10 пользователей, которые проявляют наименьшую активность в использовании социальной сети
+-- (критерии активности необходимо определить самостоятельно).
+
+SELECT id, SUM(activite) as total_activite FROM (
+  SELECT * FROM (
+    (SELECT id,0 as activite FROM users WHERE id NOT IN (SELECT user_id FROM media GROUP by user_id))
+    UNION
+    (SELECT user_id as id, COUNT(*) as activite FROM media as m GROUP by user_id)
+) as tmp_media
+	UNION ALL
+  SELECT * FROM (
+    (SELECT id,0 as activite FROM users WHERE id NOT IN (SELECT from_user_id FROM messages GROUP by from_user_id))
+	UNION
+	(SELECT from_user_id as id, COUNT(*) as activite FROM messages GROUP by from_user_id)
+) as tmp_messages
+	UNION ALL
+  SELECT * FROM (
+    (SELECT id,0 as activite FROM users WHERE id NOT IN (SELECT user_id FROM posts GROUP by user_id))
+	UNION
+	(SELECT user_id as id, COUNT(*) as activite FROM posts GROUP by user_id)	
+) as tmp_posts
+	UNION ALL
+  SELECT * FROM (
+	(SELECT id,0 as activite FROM users WHERE id NOT IN (SELECT user_id FROM likes GROUP by user_id))
+	UNION
+	(SELECT user_id as id, COUNT(*) as activite FROM likes GROUP by user_id)
+) as tmp_likes	
+) as tmp_table
+GROUP by id
+ORDER by total_activite
+LIMIT 10
+;
