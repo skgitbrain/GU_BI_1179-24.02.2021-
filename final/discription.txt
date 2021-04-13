@@ -1,0 +1,13 @@
+Курсовой проект описывает ообщий принцип работы интернет-магазина МТС в простом варианте.
+
+ДЛя хранения данных были выбраны следующие таблицы:
+Users 
+catalogs
+products
+orders
+orsers_products
+storehouses
+storehouses_products
+dicsounts
+order_status
+comments
